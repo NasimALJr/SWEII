@@ -1,0 +1,6 @@
+streamlit
+pandas
+nltk
+spacy
+scikit-learn
+gensim
