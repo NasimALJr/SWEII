@@ -206,6 +206,11 @@ MAIN_PAGE_CSS = """
         text-align: center;
         box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         margin: 10px;
+        height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        box-sizing: border-box;
     }
     
     .stat-card h3 {
@@ -254,11 +259,11 @@ def show_main_page():
         
         st.markdown("### Quick Search")
         examples = [
-            "CSE 2102 book",
+            "CSE 2101 book",
             "slides on programming",
-            "CSE 2103 lab manual",
+            "CSE 2104 lab manual",
             "CSE 3105 notes",
-            "CSE 1100 video"
+            "CSE 1101 video"
         ]
         for example in examples:
             if st.button(example, use_container_width=True, key=example):
@@ -272,7 +277,7 @@ def show_main_page():
         st.session_state.messages = []
     
     # Chat input
-    user_input = st.chat_input("Ask me anything about course materials... (e.g., 'CSE 2102 book' or 'slides for programming')")
+    user_input = st.chat_input("Ask me anything about course materials... (e.g., 'CSE 2101 book' or 'slides for programming')")
     
     # Statistics Section - Browse by Category
     st.markdown("### Browse by Category")
@@ -298,8 +303,8 @@ def show_main_page():
     with col3:
         st.markdown("""
             <div class="stat-card">
-                <h3>Lab Manuals</h3>
-                <p>Lab Manuals</p>
+                <h3 style="font-size: 1.5em;">Lab Manuals</h3>
+                <p style="font-size: 0.9em;">Lab Manuals</p>
             </div>
         """, unsafe_allow_html=True)
     

@@ -27,6 +27,14 @@ df["combined_text"] = df.apply(
 
 material_keywords = ["lab manual", "book", "slide", "note", "video", "manual", "sheet", "handout"]
 
+material_synonyms = {
+    "slide": ["slides", "class slides", "presentation", "ppt", "powerpoint"],
+    "book": ["books", "textbook", "textbooks"],
+    "lab manual": ["lab manuals", "manual", "lab guide", "lab sheet"],
+    "note": ["notes", "handout", "handouts", "sheet", "lecture notes"],
+    "video": ["videos", "video tutorial", "tutorials", "lecture video"]
+}
+
 def preprocess_text(text):
     text = text.lower()
     doc = nlp(text)
@@ -65,6 +73,10 @@ def get_doc_vector(text, model):
 
 
 def recommend_materials(query, top_n=5, threshold=0.5):
+    # If query starts with 4 digits, assume CSE department
+    if re.match(r"^\d{4}", query.strip()):
+        query = "CSE " + query
+    
     processed_query = preprocess_query(query)
     match = re.search(r"[A-Z]{3}[- ]*\d{4}", query.upper())
     filtered_df = df.copy()
@@ -74,9 +86,12 @@ def recommend_materials(query, top_n=5, threshold=0.5):
     query_lower = query.lower()
     requested_material_type = None
     
-    for kw in material_keywords:
-        if kw in query_lower:
-            requested_material_type = kw
+    for standard, synonyms in material_synonyms.items():
+        for syn in synonyms + [standard]:
+            if syn in query_lower:
+                requested_material_type = standard
+                break
+        if requested_material_type:
             break
     
     # If course code is mentioned, filter by course code
