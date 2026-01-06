@@ -72,15 +72,12 @@ def get_doc_vector(text, model):
     return model.infer_vector(words)
 
 
-def recommend_materials(query, top_n=5, threshold=0.5):
-    # If query starts with 4 digits, assume CSE department
-    if re.match(r"^\d{4}", query.strip()):
-        query = "CSE " + query
-    
-    processed_query = preprocess_query(query)
-    match = re.search(r"[A-Z]{3}[- ]*\d{4}", query.upper())
-    filtered_df = df.copy()
-    filtered_doc_vectors = doc_vectors
+def recommend_materials_wrapper(query, top_n=5, threshold=0.5):
+    """Wrapper function that uses the global variables"""
+    return recommend_materials_with_params(query, df, model, doc_vectors, top_n, threshold)
+
+
+def recommend_materials_with_params(query, df, model, doc_vectors, top_n=5, threshold=0.5):
     
     # Extract material type from query
     query_lower = query.lower()
@@ -95,11 +92,16 @@ def recommend_materials(query, top_n=5, threshold=0.5):
             break
     
     # If course code is mentioned, filter by course code
+    match = re.search(r'\b[A-Z]{3}[- ]?\d{4}\b', query)
     if match:
         course_code = match.group(0).replace(" ", "").replace("-", "")
         filtered_df = df[df["course_code"].str.replace(" ", "") == course_code]
-        if not filtered_df.empty:
-            filtered_doc_vectors = doc_vectors[filtered_df.index]
+        if filtered_df.empty:
+            if requested_material_type:
+                return "No " + requested_material_type + " found for course " + match.group(0) + "."
+            else:
+                return "No materials found for course " + match.group(0) + "."
+        filtered_doc_vectors = doc_vectors[filtered_df.index]
     else:
         # Check for course name in query
         for course_name in df["course_name"].unique():
@@ -108,6 +110,10 @@ def recommend_materials(query, top_n=5, threshold=0.5):
                 if not filtered_df.empty:
                     filtered_doc_vectors = doc_vectors[filtered_df.index]
                 break
+    
+    if 'filtered_df' not in locals():
+        filtered_df = df
+        filtered_doc_vectors = doc_vectors
     
     # If material type is specified in query, filter by material type
     if requested_material_type:
@@ -118,6 +124,7 @@ def recommend_materials(query, top_n=5, threshold=0.5):
             filtered_df = temp_filtered
             filtered_doc_vectors = doc_vectors[filtered_df.index]
 
+    processed_query = preprocess_text(query)
     query_vec = get_doc_vector(processed_query, model)
     similarity = cosine_similarity([query_vec], filtered_doc_vectors).flatten()
 
@@ -149,6 +156,10 @@ def recommend_materials(query, top_n=5, threshold=0.5):
     if not results and match:
         fallback = df[df["course_code"].str.replace(" ", "") == course_code]
         if not fallback.empty:
+            if requested_material_type:
+                fallback = fallback[fallback["material_type"].str.lower().str.contains(requested_material_type, na=False)]
+                if fallback.empty:
+                    return "No " + requested_material_type + " found for this course."
             return "\n".join([
                 f"**Found Material**\n\n"
                 f"**Course:** {row['course_name']} ({row['course_code']})\n\n"
@@ -181,6 +192,7 @@ queries = [
     "CSE 3201 book"
 ]
 
-for q in queries:
-    print(f"\nQuery: {q}")
-    print(recommend_materials(q))
+if __name__ == "__main__":
+    for q in queries:
+        print(f"\nQuery: {q}")
+        print(recommend_materials_wrapper(q)) 

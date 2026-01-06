@@ -1,5 +1,5 @@
 import streamlit as st
-from main import recommend_materials
+from main import recommend_materials_wrapper
 import uuid
 
 # Custom CSS for main page styling
@@ -367,7 +367,7 @@ def show_main_page():
         
         # Get response from recommendation system
         with st.spinner("Searching through materials..."):
-            response = recommend_materials(user_input)
+            response = recommend_materials_wrapper(user_input)
         
         # Add assistant response to chat history with same pair_id
         st.session_state.messages.append({"role": "assistant", "content": response, "pair_id": pair_id})
