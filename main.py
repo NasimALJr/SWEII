@@ -93,23 +93,42 @@ def recommend_materials_with_params(query, df, model, doc_vectors, top_n=5, thre
     
     # If course code is mentioned, filter by course code
     match = re.search(r'\b[A-Z]{3}[- ]?\d{4}\b', query)
+    course_code_normalized = None
     if match:
-        course_code = match.group(0).replace(" ", "").replace("-", "")
-        filtered_df = df[df["course_code"].str.replace(" ", "") == course_code]
+        course_code_normalized = match.group(0).replace(" ", "").replace("-", "")
+        filtered_df = df[df["course_code"].str.replace(" ", "") == course_code_normalized]
         if filtered_df.empty:
-            if requested_material_type:
-                return "No " + requested_material_type + " found for course " + match.group(0) + "."
-            else:
-                return "No materials found for course " + match.group(0) + "."
-        filtered_doc_vectors = doc_vectors[filtered_df.index]
+            match = None
+        else:
+            filtered_doc_vectors = doc_vectors[filtered_df.index]
     else:
-        # Check for course name in query
-        for course_name in df["course_name"].unique():
-            if course_name.lower() in query_lower:
-                filtered_df = df[df["course_name"] == course_name]
-                if not filtered_df.empty:
-                    filtered_doc_vectors = doc_vectors[filtered_df.index]
-                break
+        # Check for short course code (4 digits)
+        match_short = re.search(r'\b\d{4}\b', query)
+        if match_short:
+            code = match_short.group(0)
+            filtered_df = df[df["course_code"].str.contains(code)]
+            if not filtered_df.empty:
+                match = match_short  # set match for fallback
+                course_code_normalized = code  # for fallback
+                filtered_doc_vectors = doc_vectors[filtered_df.index]
+            else:
+                match = None
+                # Check for course name in query
+                for course_name in df["course_name"].unique():
+                    if course_name.lower() in query_lower:
+                        filtered_df = df[df["course_name"] == course_name]
+                        if not filtered_df.empty:
+                            filtered_doc_vectors = doc_vectors[filtered_df.index]
+                        break
+        else:
+            match = None
+            # Check for course name in query
+            for course_name in df["course_name"].unique():
+                if course_name.lower() in query_lower:
+                    filtered_df = df[df["course_name"] == course_name]
+                    if not filtered_df.empty:
+                        filtered_doc_vectors = doc_vectors[filtered_df.index]
+                    break
     
     if 'filtered_df' not in locals():
         filtered_df = df
@@ -154,22 +173,25 @@ def recommend_materials_with_params(query, df, model, doc_vectors, top_n=5, thre
 
     # Fallback: show materials for that course if specific not found
     if not results and match:
-        fallback = df[df["course_code"].str.replace(" ", "") == course_code]
-        if not fallback.empty:
-            if requested_material_type:
-                fallback = fallback[fallback["material_type"].str.lower().str.contains(requested_material_type, na=False)]
-                if fallback.empty:
-                    return "No " + requested_material_type + " found for this course."
-            return "\n".join([
-                f"**Found Material**\n\n"
-                f"**Course:** {row['course_name']} ({row['course_code']})\n\n"
-                f"**Type:** {row['material_type']}\n\n"
-                f"**Title:** {row['material_title']}\n\n"
-                f"**Link:** [{row['material_link']}]({row['material_link']})\n\n"
-                f"**Description:** {row['description']}\n\n"
-                f"---\n\n"
-                for _, row in fallback.iterrows()
-            ])
+        if len(course_code_normalized) == 4:
+            # short code, already filtered_df is set
+            fallback = filtered_df
+        else:
+            fallback = df[df["course_code"].str.replace(" ", "") == course_code_normalized]
+        if requested_material_type:
+            fallback = fallback[fallback["material_type"].str.lower().str.contains(requested_material_type, na=False)]
+            if fallback.empty:
+                return "No " + requested_material_type + " found for this course."
+        return "\n".join([
+            f"**Found Material**\n\n"
+            f"**Course:** {row['course_name']} ({row['course_code']})\n\n"
+            f"**Type:** {row['material_type']}\n\n"
+            f"**Title:** {row['material_title']}\n\n"
+            f"**Link:** [{row['material_link']}]({row['material_link']})\n\n"
+            f"**Description:** {row['description']}\n\n"
+            f"---\n\n"
+            for _, row in fallback.iterrows()
+        ])
 
     # Nothing at all found
     if not results:

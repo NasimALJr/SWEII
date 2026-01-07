@@ -43,12 +43,12 @@ def main():
 
     if success:
         print("\n" + "=" * 60)
-        print("✅ All tests passed!")
+        print("All tests passed!")
         print("The course material recommendation system is working correctly.")
         return 0
     else:
         print("\n" + "=" * 60)
-        print("❌ Some tests failed!")
+        print("Some tests failed!")
         print("Please check the test output above for details.")
         return 1
 
